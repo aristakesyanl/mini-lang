@@ -222,4 +222,4 @@ namespace mini_lang {
 // Public API
 void dump(ModuleAST &module) { ASTDumper().dump(&module); }
 
-} 
+}

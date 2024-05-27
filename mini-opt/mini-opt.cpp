@@ -1,17 +1,19 @@
+#include "mlir/IR/Diagnostics.h"
+#include "mlir/Support/LogicalResult.h"
 #include "Mini/AST.h"
 #include "Mini/Dialect.h"
 #include "Mini/Lexer.h"
 #include "Mini/MLIRGen.h"
 #include "Mini/Parser.h"
-#include <memory>
-#include <string>
-#include <system_error>
-#include <utility>
+#include "Mini/Passes.h"
 
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/Verifier.h"
 #include "mlir/Parser/Parser.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/Passes.h"
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
@@ -19,12 +21,16 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
+#include <memory>
+#include <string>
+#include <system_error>
+#include <utility>
 
 using namespace mini_lang;
 namespace cl = llvm::cl;
 
 static cl::opt<std::string> inputFilename(cl::Positional,
-                                          cl::desc("<input mini_lang file>"),
+                                          cl::desc("<input mini-lang file>"),
                                           cl::init("-"),
                                           cl::value_desc("filename"));
 
@@ -33,7 +39,7 @@ enum InputType { Mini, MLIR };
 } // namespace
 static cl::opt<enum InputType> inputType(
     "x", cl::init(Mini), cl::desc("Decided the kind of output desired"),
-    cl::values(clEnumValN(Mini, "mini_lang", "load the input file as a mini_lang source.")),
+    cl::values(clEnumValN(Mini, "mini-lang", "load the input file as a mini-lang source.")),
     cl::values(clEnumValN(MLIR, "mlir",
                           "load the input file as an MLIR file")));
 
@@ -44,6 +50,8 @@ static cl::opt<enum Action> emitAction(
     "emit", cl::desc("Select the kind of output desired"),
     cl::values(clEnumValN(DumpAST, "ast", "output the AST dump")),
     cl::values(clEnumValN(DumpMLIR, "mlir", "output the MLIR dump")));
+
+static cl::opt<bool> enableOpt("opt", cl::desc("Enable optimizations"));
 
 
 std::unique_ptr<mini_lang::ModuleAST> parseInputFile(llvm::StringRef filename) {
@@ -59,23 +67,16 @@ std::unique_ptr<mini_lang::ModuleAST> parseInputFile(llvm::StringRef filename) {
   return parser.parseModule();
 }
 
-int dumpMLIR() {
-  mlir::MLIRContext context;
-  // Load our Dialect in this MLIR Context.
-  context.getOrLoadDialect<mlir::mini_lang::MiniDialect>();
-
+int loadMLIR(llvm::SourceMgr &sourceMgr, mlir::MLIRContext &context,
+             mlir::OwningOpRef<mlir::ModuleOp> &module) {
 
   if (inputType != InputType::MLIR &&
       !llvm::StringRef(inputFilename).ends_with(".mlir")) {
     auto moduleAST = parseInputFile(inputFilename);
     if (!moduleAST)
       return 6;
-    mlir::OwningOpRef<mlir::ModuleOp> module = mlirGen(context, *moduleAST);
-    if (!module)
-      return 1;
-
-    module->dump();
-    return 0;
+    module = mlirGen(context, *moduleAST);
+    return !module ? 1 : 0;
   }
 
   // Otherwise, the input is '.mlir'.
@@ -87,13 +88,43 @@ int dumpMLIR() {
   }
 
   // Parse the input mlir.
-  llvm::SourceMgr sourceMgr;
   sourceMgr.AddNewSourceBuffer(std::move(*fileOrErr), llvm::SMLoc());
-  mlir::OwningOpRef<mlir::ModuleOp> module =
-      mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &context);
+  module = mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &context);
   if (!module) {
     llvm::errs() << "Error can't load file " << inputFilename << "\n";
     return 3;
+  }
+  return 0;
+}
+
+int dumpMLIR() {
+  mlir::MLIRContext context;
+  // Load our Dialect in this MLIR Context.
+  context.getOrLoadDialect<mlir::mini_lang::MiniDialect>();
+
+  mlir::OwningOpRef<mlir::ModuleOp> module;
+  llvm::SourceMgr sourceMgr;
+  mlir::SourceMgrDiagnosticHandler sourceMgrHandler(sourceMgr, &context);
+  if (int error = loadMLIR(sourceMgr, context, module))
+    return error;
+
+  if (enableOpt) {
+    mlir::PassManager pm(module.get()->getName());
+    // Apply any generic pass manager command line options and run the pipeline.
+    if (mlir::failed(mlir::applyPassManagerCLOptions(pm)))
+      return 4;
+
+    // Inline all functions into main and then delete them.
+    pm.addPass(mlir::createInlinerPass());
+
+    // Now that there is only one function, we can infer the shapes of each of
+    // the operations.
+    mlir::OpPassManager &optPM = pm.nest<mlir::mini_lang::FuncOp>();
+    optPM.addPass(mlir::mini_lang::createShapeInferencePass());
+    optPM.addPass(mlir::createCSEPass());
+
+    if (mlir::failed(pm.run(*module)))
+      return 4;
   }
 
   module->dump();
@@ -102,7 +133,7 @@ int dumpMLIR() {
 
 int dumpAST() {
   if (inputType == InputType::MLIR) {
-    llvm::errs() << "Can't dump a Mini AST when the input is MLIR\n";
+    llvm::errs() << "Can't dump a mini-lang AST when the input is MLIR\n";
     return 5;
   }
 
@@ -118,7 +149,9 @@ int main(int argc, char **argv) {
   // Register any command line options.
   mlir::registerAsmPrinterCLOptions();
   mlir::registerMLIRContextCLOptions();
-  cl::ParseCommandLineOptions(argc, argv, "mini_lang compiler\n");
+  mlir::registerPassManagerCLOptions();
+
+  cl::ParseCommandLineOptions(argc, argv, "mini-lang compiler\n");
 
   switch (emitAction) {
   case Action::DumpAST:

@@ -1,5 +1,5 @@
-#ifndef MINI_MLIRGEN_H
-#define MINI_MLIRGEN_H
+#ifndef MINI_LANG_MLIRGEN_H
+#define MINI_LANG_MLIRGEN_H
 
 #include <memory>
 
@@ -13,8 +13,6 @@ class ModuleOp;
 namespace mini_lang {
 class ModuleAST;
 
-/// Emit IR for the given Mini moduleAST, returns a newly created MLIR module
-/// or nullptr on failure.
 mlir::OwningOpRef<mlir::ModuleOp> mlirGen(mlir::MLIRContext &context,
                                           ModuleAST &moduleAST);
 } 

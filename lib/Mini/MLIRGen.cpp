@@ -39,12 +39,12 @@ using llvm::Twine;
 
 namespace {
 
+
 class MLIRGenImpl {
 public:
   MLIRGenImpl(mlir::MLIRContext &context) : builder(&context) {}
 
-  /// Public API: convert the AST for a Mini module (source file) to an MLIR
-  /// Module operation.
+
   mlir::ModuleOp mlirGen(ModuleAST &moduleAST) {
     // We create an empty MLIR module and codegen functions one at a time and
     // add them to the module.
@@ -53,9 +53,6 @@ public:
     for (FunctionAST &f : moduleAST)
       mlirGen(f);
 
-    // Verify the module after we have finished constructing it, this will check
-    // the structural properties of the IR and invoke any specific verifiers we
-    // have on the Mini operations.
     if (failed(mlir::verify(theModule))) {
       theModule.emitError("module verification error");
       return nullptr;
@@ -65,7 +62,7 @@ public:
   }
 
 private:
-  /// A "module" matches a Mini source file: containing a list of functions.
+
   mlir::ModuleOp theModule;
 
   /// The builder is a helper class to create IR inside a function. The builder
@@ -79,7 +76,6 @@ private:
   /// scope is destroyed and the mappings created in this scope are dropped.
   llvm::ScopedHashTable<StringRef, mlir::Value> symbolTable;
 
-  /// Helper conversion for a Mini AST location to an MLIR location.
   mlir::Location loc(const Location &loc) {
     return mlir::FileLineColLoc::get(builder.getStringAttr(*loc.file), loc.line,
                                      loc.col);
@@ -94,8 +90,7 @@ private:
     return mlir::success();
   }
 
-  /// Create the prototype for an MLIR function with as many arguments as the
-  /// provided Mini AST prototype.
+
   mlir::mini_lang::FuncOp mlirGen(PrototypeAST &proto) {
     auto location = loc(proto.loc());
 
@@ -156,6 +151,10 @@ private:
       function.setType(builder.getFunctionType(
           function.getFunctionType().getInputs(), getType(VarType{})));
     }
+
+    // If this function isn't main, then set the visibility to private.
+    if (funcAST.getProto()->getName() != "main")
+      function.setPrivate();
 
     return function;
   }
@@ -261,8 +260,7 @@ private:
     auto dataAttribute =
         mlir::DenseElementsAttr::get(dataType, llvm::ArrayRef(data));
 
-    // Build the MLIR op `mini.constant`. This invokes the `ConstantOp::build`
-    // method.
+
     return builder.create<ConstantOp>(loc(lit.loc()), type, dataAttribute);
   }
 
@@ -421,8 +419,6 @@ private:
     return mlir::RankedTensorType::get(shape, builder.getF64Type());
   }
 
-  /// Build an MLIR type from a Mini AST variable type (forward to the generic
-  /// getType above).
   mlir::Type getType(const VarType &type) { return getType(type.shape); }
 };
 
@@ -436,4 +432,4 @@ mlir::OwningOpRef<mlir::ModuleOp> mlirGen(mlir::MLIRContext &context,
   return MLIRGenImpl(context).mlirGen(moduleAST);
 }
 
-}
+} 

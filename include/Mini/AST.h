@@ -1,5 +1,7 @@
-#ifndef MINI_AST_H
-#define MINI_AST_H
+
+
+#ifndef MINI_LANG_AST_H
+#define MINI_LANG_AST_H
 
 #include "Mini/Lexer.h"
 
@@ -227,6 +229,6 @@ public:
 
 void dump(ModuleAST &);
 
-}
+} 
 
-#endif
+#endif 

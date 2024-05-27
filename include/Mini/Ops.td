@@ -1,13 +1,15 @@
-#ifndef MINI_OPS
-#define MINI_OPS
+#ifndef MINI_LANG_OPS
+#define MINI_LANG_OPS
 
-include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/IR/SymbolInterfaces.td"
+include "mlir/Interfaces/CallInterfaces.td"
+include "mlir/Interfaces/CastInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "Mini/ShapeInferenceInterface.td"
+include "mlir/Interfaces/TilingInterface.td"
 
-// Provide a definition of the 'mini' dialect in the ODS framework so that we
-// can define our operations.
+
 def Mini_Dialect : Dialect {
   let name = "mini";
   let cppNamespace = "::mlir::mini_lang";
@@ -60,7 +62,8 @@ def ConstantOp : Mini_Op<"constant", [Pure]> {
 
 
 
-def AddOp : Mini_Op<"add"> {
+def AddOp : Mini_Op<"add",
+    [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<TilingInterface>]> {
   let summary = "element-wise addition operation";
   let description = [{
     The "add" operation performs element-wise addition between two tensors.
@@ -79,9 +82,30 @@ def AddOp : Mini_Op<"add"> {
   ];
 }
 
-//===----------------------------------------------------------------------===//
-// FuncOp
-//===----------------------------------------------------------------------===//
+
+
+def CastOp : Mini_Op<"cast", [
+     DeclareOpInterfaceMethods<CastOpInterface>,
+     DeclareOpInterfaceMethods<ShapeInferenceOpInterface>,
+     Pure,
+     SameOperandsAndResultShape
+  ]> {
+  let summary = "shape cast operation";
+  let description = [{
+    The "cast" operation converts a tensor from one type to an equivalent type
+    without changing any data elements. The source and destination types must
+    both be tensor types with the same element type. If both are ranked, then
+    shape is required to match. The operation is invalid if converting to a
+    mismatching constant dimension.
+  }];
+
+  let arguments = (ins F64Tensor:$input);
+  let results = (outs F64Tensor:$output);
+
+  let assemblyFormat = "$input attr-dict `:` type($input) `to` type($output)";
+}
+
+
 
 def FuncOp : Mini_Op<"func", [
     FunctionOpInterface, IsolatedFromAbove
@@ -89,7 +113,7 @@ def FuncOp : Mini_Op<"func", [
   let summary = "user defined function operation";
   let description = [{
     The "mini.func" operation represents a user defined function. These are
-    callable SSA-region operations that contain mini computations.
+    callable SSA-region operations that contain mini-lang computations.
 
     Example:
 
@@ -135,7 +159,9 @@ def FuncOp : Mini_Op<"func", [
 }
 
 
-def GenericCallOp : Mini_Op<"generic_call"> {
+
+def GenericCallOp : Mini_Op<"generic_call",
+    [DeclareOpInterfaceMethods<CallOpInterface>]> {
   let summary = "generic call operation";
   let description = [{
     Generic calls represent calls to a user defined function that needs to
@@ -171,8 +197,10 @@ def GenericCallOp : Mini_Op<"generic_call"> {
 }
 
 
-def MulOp : Mini_Op<"matmul"> {
-  let summary = "matrix multiplication operation";
+
+def MulOp : Mini_Op<"matmul",
+    [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<TilingInterface>]> {
+  let summary = "element-wise multiplication operation";
   let description = [{
     The "matmul" operation performs element-wise multiplication between two
     tensors. The shapes of the tensor operands are expected to match.
@@ -207,7 +235,7 @@ def PrintOp : Mini_Op<"print"> {
 
 
 
-def ReshapeOp : Mini_Op<"reshape"> {
+def ReshapeOp : Mini_Op<"reshape", [Pure]> {
   let summary = "tensor reshape operation";
   let description = [{
     Reshape operation is transforming its input tensor into a new tensor with
@@ -226,7 +254,9 @@ def ReshapeOp : Mini_Op<"reshape"> {
   let assemblyFormat = [{
     `(` $input `:` type($input) `)` attr-dict `to` type(results)
   }];
+
 }
+
 
 
 def ReturnOp : Mini_Op<"return", [Pure, HasParent<"FuncOp">,
@@ -263,12 +293,13 @@ def ReturnOp : Mini_Op<"return", [Pure, HasParent<"FuncOp">,
     bool hasOperand() { return getNumOperands() != 0; }
   }];
 
-  // Invoke a static verify method to verify this return operation.
+  // Indicate that additional verification for this operation is necessary.
   let hasVerifier = 1;
 }
 
 
-def TransposeOp : Mini_Op<"transpose"> {
+def TransposeOp : Mini_Op<"transpose",
+    [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>]> {
   let summary = "transpose operation";
 
   let arguments = (ins F64Tensor:$input);
@@ -283,7 +314,7 @@ def TransposeOp : Mini_Op<"transpose"> {
     OpBuilder<(ins "Value":$input)>
   ];
 
-  // Invoke a static verify method to verify this transpose operation.
+  // Indicate that additional verification for this operation is necessary.
   let hasVerifier = 1;
 }
 

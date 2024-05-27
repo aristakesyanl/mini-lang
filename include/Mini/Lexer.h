@@ -1,5 +1,5 @@
-#ifndef MINI_LEXER_H
-#define MINI_LEXER_H
+#ifndef MINI_LANG_LEXER_H
+#define MINI_LANG_LEXER_H
 
 #include "llvm/ADT/StringRef.h"
 
@@ -216,4 +216,5 @@ private:
   const char *current, *end;
 };
 } 
+
 #endif 
