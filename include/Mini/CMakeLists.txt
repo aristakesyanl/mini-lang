@@ -10,3 +10,7 @@ set(LLVM_TARGET_DEFINITIONS ShapeInferenceInterface.td)
 mlir_tablegen(ShapeInferenceOpInterface.h.inc -gen-op-interface-decls)
 mlir_tablegen(ShapeInferenceOpInterface.cpp.inc -gen-op-interface-defs)
 add_public_tablegen_target(ShapeInferenceInterfaceIncGen)
+
+set(LLVM_TARGET_DEFINITIONS ToyCombine.td)
+mlir_tablegen(ToyCombine.inc -gen-rewriters)
+add_public_tablegen_target(ToyCombineIncGen)

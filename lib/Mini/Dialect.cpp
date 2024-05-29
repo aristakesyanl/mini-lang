@@ -197,6 +197,13 @@ mlir::LogicalResult ConstantOp::verify() {
 void AddOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
                   mlir::Value lhs, mlir::Value rhs) {
   state.addTypes(UnrankedTensorType::get(builder.getF64Type()));
+
+
+  auto tensorLHS = dyn_cast<RankedTensorType>(lhs.getType());
+  auto tensorRHS = dyn_cast<RankedTensorType>(rhs.getType());
+  // if(tensorLHS && tensorRHS) llvm::errs() << "arguments are ranked tensors\n";
+  llvm::errs() << "whatever\n";
+  llvm::errs() << lhs.getType() << " " << rhs.getType() << '\n';
   state.addOperands({lhs, rhs});
 }
 
@@ -302,7 +309,7 @@ MutableOperandRange GenericCallOp::getArgOperandsMutable() {
 
 
 void MulOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
-                  mlir::Value lhs, mlir::Value rhs) {
+                  mlir::Value lhs, mlir::Value rhs) {              
   state.addTypes(UnrankedTensorType::get(builder.getF64Type()));
   state.addOperands({lhs, rhs});
 }

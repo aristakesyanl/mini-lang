@@ -255,6 +255,8 @@ def ReshapeOp : Mini_Op<"reshape", [Pure]> {
     `(` $input `:` type($input) `)` attr-dict `to` type(results)
   }];
 
+  let hasCanonicalizer = 1;
+
 }
 
 
@@ -313,6 +315,8 @@ def TransposeOp : Mini_Op<"transpose",
   let builders = [
     OpBuilder<(ins "Value":$input)>
   ];
+
+  let hasCanonicalizer = 1;
 
   // Indicate that additional verification for this operation is necessary.
   let hasVerifier = 1;

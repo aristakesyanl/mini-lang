@@ -121,6 +121,7 @@ int dumpMLIR() {
     // the operations.
     mlir::OpPassManager &optPM = pm.nest<mlir::mini_lang::FuncOp>();
     optPM.addPass(mlir::mini_lang::createShapeInferencePass());
+    optPM.addPass(mlir::createCanonicalizerPass());
     optPM.addPass(mlir::createCSEPass());
 
     if (mlir::failed(pm.run(*module)))

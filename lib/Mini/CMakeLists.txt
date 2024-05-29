@@ -3,6 +3,7 @@ add_mlir_dialect_library(MLIRMini
         AST.cpp
         MLIRGen.cpp
         ShapeInferencePass.cpp
+        ToyCombine.cpp
 
         ADDITIONAL_HEADER_DIRS
         ${PROJECT_SOURCE_DIR}/include/Mini
@@ -10,6 +11,7 @@ add_mlir_dialect_library(MLIRMini
         DEPENDS
         MLIRMiniOpsIncGen
         ShapeInferenceInterfaceIncGen
+        ToyCombineIncGen
 
 	LINK_LIBS PUBLIC
 	MLIRIR
