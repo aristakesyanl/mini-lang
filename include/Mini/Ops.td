@@ -63,7 +63,10 @@ def ConstantOp : Mini_Op<"constant", [Pure]> {
 
 
 def AddOp : Mini_Op<"add",
-    [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<TilingInterface>]> {
+    [Pure, DeclareOpInterfaceMethods<ShapeInferenceOpInterface>, DeclareOpInterfaceMethods<TilingInterface,
+      ["getIterationDomain",
+       "getLoopIteratorTypes",
+       "getTiledImplementation"]>]> {
   let summary = "element-wise addition operation";
   let description = [{
     The "add" operation performs element-wise addition between two tensors.

@@ -12,9 +12,26 @@
 #include "Mini/ShapeInferenceInterface.h"
 #include "mlir/Interfaces/TilingInterface.h"
 
+#include <optional>
+
 
 #include "Mini/Dialect.h.inc"
+#include "mlir/Dialect/Tensor/IR/TensorOps.h.inc"
 
+const int64_t tile_size = 8;
+const int64_t rank = 2;
+namespace mlir{
+    namespace mini_lang{
+        std::optional<DenseElementsAttr> getOperandAttribute(Value val);
+        struct SliceParameters{
+            ArrayRef<OpFoldResult> offsets;
+            ArrayRef<OpFoldResult> sizes;
+            ArrayRef<OpFoldResult> slides;
+        };
+
+        SliceParameters getSliceParameters(mlir::OpBuilder &builder, int64_t index);
+    }
+}
 
 #define GET_OP_CLASSES
 #include "Mini/Ops.h.inc"
