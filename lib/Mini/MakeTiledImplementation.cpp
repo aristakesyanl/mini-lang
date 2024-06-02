@@ -20,11 +20,6 @@
 #define DEBUG_TYPE "make-tile"
 
 
-// namespace impl {
-// #define GEN_PASS_DEF_MYPASS
-// #include "MakeTiledImplementation.h.inc"
-// }
-
 using namespace mlir;
 using namespace mlir::mini_lang;
 using namespace mlir::tensor;
@@ -116,7 +111,6 @@ struct MakeTiledImplementationRewrite : public OpRewritePattern<AddOp> {
         ValueRange vals(addResults);
 
         rewriter.replaceOp(op, vals);
-        // rewriter.eraseOp(rhsDefiningOp);
         return success();
 
       }
