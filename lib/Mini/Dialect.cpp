@@ -203,45 +203,6 @@ void AddOp::build(mlir::OpBuilder &builder, mlir::OperationState &state,
                   mlir::Value lhs, mlir::Value rhs) {
   state.addTypes(UnrankedTensorType::get(builder.getF64Type()));
   state.addOperands({lhs, rhs});
-  
-  
-  auto tensorLHS = dyn_cast<RankedTensorType>(lhs.getType());
-  auto tensorRHS = dyn_cast<RankedTensorType>(rhs.getType());
-  int64_t tile_count = 1;
-
-  llvm::errs() << tensorLHS << " " << tensorRHS;
-
-  if(tensorLHS && tensorRHS){
-    llvm::errs() << "this is happening1\n";
-    ArrayRef<int64_t> dimLHS{tensorLHS.getShape().begin(), tensorLHS.getShape().end()};
-    ArrayRef<int64_t> dimRHS{tensorLHS.getShape().begin(), tensorLHS.getShape().end()}; 
-
-    if(dimLHS != dimRHS){
-      // auto f = getOperation();
-      // f->emitError("Tensor dimensions don't match in addition operation");
-    } else{
-      //if tensor dimensions match try tiling them
-      for(auto dim : dimLHS){
-        //check that dimenstions are multiples of tile_size
-        if(dim % tile_size != 0){
-          //if tensor dimensions are not multiples of tile_size done tile
-          // return FailureOr<TilingResult>{};
-        } 
-        tile_count *= dim / tile_size;
-      }
-    }
-
-    if(tile_count > 1){
-      for(int64_t i = 0; i < tile_count; i++){
-        llvm::errs() << "this is happening2\n";
-        mlir::mini_lang::SliceParameters param = getSliceParameters(builder, i);
-        tensor::ExtractSliceOp::build(builder, state, lhs, param.offsets, param.sizes, param.slides, ArrayRef<NamedAttribute>{});
-        tensor::ExtractSliceOp::build(builder, state, rhs, param.offsets, param.sizes, param.slides, ArrayRef<NamedAttribute>{});
-      }
-    }
-
-  }
-
 }
 
 mlir::ParseResult AddOp::parse(mlir::OpAsmParser &parser,
@@ -262,7 +223,6 @@ void AddOp::inferShapes() {
 std::optional<DenseElementsAttr> mlir::mini_lang::getOperandAttribute(Value val){
   std::optional<DenseElementsAttr> attr;
   while(true){
-    llvm::errs() << "val = " << val << '\n';
     if(auto op = dyn_cast<TransposeOp>(val.getDefiningOp())){
       val = op.getInput();
     }
@@ -279,24 +239,6 @@ std::optional<DenseElementsAttr> mlir::mini_lang::getOperandAttribute(Value val)
 
 
 
-
-mlir::mini_lang::SliceParameters mlir::mini_lang::getSliceParameters(mlir::OpBuilder &builder, int64_t index){
-  mlir::mini_lang::SliceParameters param;
-  ArrayRef<int64_t> off{index * tile_size, index * tile_size};
-  ArrayRef<int64_t> sz{tile_size, tile_size};
-  ArrayRef<int64_t> sld{1, 1};
-
-  SmallVector<OpFoldResult> vecOff = getAsIndexOpFoldResult(builder.getContext(), off);
-  SmallVector<OpFoldResult> vecSz = getAsIndexOpFoldResult(builder.getContext(), sz);
-  SmallVector<OpFoldResult> vecSld = getAsIndexOpFoldResult(builder.getContext(), sld);
-
-  param.offsets = ArrayRef(vecOff);
-  param.sizes = ArrayRef(vecSz);
-  param.slides = ArrayRef(vecSld);
-
-  return param;
-
-}
 
 
 SmallVector<utils::IteratorType> AddOp::getLoopIteratorTypes(){

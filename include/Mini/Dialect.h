@@ -23,13 +23,6 @@ const int64_t rank = 2;
 namespace mlir{
     namespace mini_lang{
         std::optional<DenseElementsAttr> getOperandAttribute(Value val);
-        struct SliceParameters{
-            ArrayRef<OpFoldResult> offsets;
-            ArrayRef<OpFoldResult> sizes;
-            ArrayRef<OpFoldResult> slides;
-        };
-
-        SliceParameters getSliceParameters(mlir::OpBuilder &builder, int64_t index);
     }
 }
 

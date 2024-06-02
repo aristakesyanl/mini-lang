@@ -14,3 +14,9 @@ add_public_tablegen_target(ShapeInferenceInterfaceIncGen)
 set(LLVM_TARGET_DEFINITIONS ToyCombine.td)
 mlir_tablegen(ToyCombine.inc -gen-rewriters)
 add_public_tablegen_target(ToyCombineIncGen)
+
+
+set(LLVM_TARGET_DEFINITIONS MakeTiledImplementation.td)
+mlir_tablegen(MakeTiledImplementation.h.inc -gen-pass-decls -name Tensor)
+mlir_tablegen(MakeTiledImplementation.cpp.inc -gen-pass-decls -name Tensor)
+add_public_tablegen_target(MakeTiledImplementationIncGen)

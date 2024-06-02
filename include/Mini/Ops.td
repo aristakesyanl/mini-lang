@@ -73,7 +73,7 @@ def AddOp : Mini_Op<"add",
     The shapes of the tensor operands are expected to match.
   }];
 
-  let arguments = (ins F64Tensor:$lhs, F64Tensor:$rhs);
+  let arguments = (ins  F64Tensor:$lhs, F64Tensor:$rhs);
   let results = (outs F64Tensor);
 
   // Indicate that the operation has a custom parser and printer method.
